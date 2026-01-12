@@ -25,17 +25,17 @@ Dự án gồm các phần:
 ---
 
 ## 2) Cấu trúc thư mục dự án
+
+```text
 Chest X-ray/
-│
 ├── App/                 # Chứa chương trình demo Streamlit (app.py)
 ├── data/                # Dữ liệu dataset (train/val/test) - KHÔNG push GitHub
-├── Demo/                # video demo
+├── Demo/                # Video demo
 ├── model/               # Chứa model đã train (.keras)
 ├── notebooks/           # Notebook huấn luyện mô hình (.ipynb)
 ├── Report/              # Báo cáo cuối kỳ
 ├── sample_images/       # Ảnh mẫu để test demo
 ├── Slide/               # Slide thuyết trình
-│
 ├── README.md            # Giới thiệu dự án
 └── requirements.txt     # Danh sách thư viện cần cài
 
