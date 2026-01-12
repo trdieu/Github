@@ -25,18 +25,19 @@ Dự án gồm các phần:
 ---
 
 ## 2) Cấu trúc thư mục dự án
-Dưới đây là cấu trúc thư mục dự án (đúng theo project hiện tại):
-
-├── App/ # (Tuỳ chọn) giao diện demo (nếu có)
-├── data/ # Dữ liệu dataset (train/val/test)
-├── Demo/ # File demo chạy trên VS Code
-├── model/ # Chứa model đã train (.keras)
-├── notebooks/ # Notebook huấn luyện mô hình (.ipynb)
-├── Report/ # Báo cáo cuối kỳ
-├── sample_images/ # Ảnh mẫu để test mô hình
-├── Slide/ # Slide thuyết trình
-├── README.md # Giới thiệu dự án
-└── requirements.txt # Danh sách thư viện cần cài
+Chest X-ray/
+│
+├── App/                 # Chứa chương trình demo Streamlit (app.py)
+├── data/                # Dữ liệu dataset (train/val/test) - KHÔNG push GitHub
+├── Demo/                # video demo
+├── model/               # Chứa model đã train (.keras)
+├── notebooks/           # Notebook huấn luyện mô hình (.ipynb)
+├── Report/              # Báo cáo cuối kỳ
+├── sample_images/       # Ảnh mẫu để test demo
+├── Slide/               # Slide thuyết trình
+│
+├── README.md            # Giới thiệu dự án
+└── requirements.txt     # Danh sách thư viện cần cài
 
 ---
 
