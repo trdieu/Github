@@ -165,7 +165,6 @@ Trong notebook/Report có thực hiện đánh giá mô hình:
 - Confusion Matrix
 - Classification Report  
 
-(Lưu ý: kết quả có thể thay đổi tuỳ cấu hình train và dữ liệu.)
 
 ---
 

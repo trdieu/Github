@@ -1,96 +1,178 @@
 import os
+import gradio as gr
 import numpy as np
-import streamlit as st
-import tensorflow as tf
 from PIL import Image
+import tensorflow as tf
 
-# Cấu hình mặc định
-DEFAULT_MODEL_PATH = "model/xray_model.keras"
-CLASS_NAMES = ["NORMAL", "PNEUMONIA"]
+# đường dẫn model
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.abspath(os.path.join(APP_DIR, "..", "model", "xray_model.keras"))
+
 IMG_SIZE = (180, 180)
+CLASS_NAMES = ["NORMAL", "PNEUMONIA"]
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(
+        f"Không tìm thấy model tại:\n{MODEL_PATH}\n"
+        "Hãy kiểm tra MODEL_PATH và tên file model."
+    )
+
+print("Loading model from:", MODEL_PATH)
+model = tf.keras.models.load_model(MODEL_PATH)
+
+# model.input_shape
+in_shape = model.input_shape
+if isinstance(in_shape, list):
+    in_shape = in_shape[0]
+
+# fallback nếu không đọc được shape
+try:
+    IMG_SIZE = (int(in_shape[1]), int(in_shape[2]))
+except Exception:
+    IMG_SIZE = (180, 180)
+
+HAS_RESCALING = any(isinstance(l, tf.keras.layers.Rescaling) for l in model.layers)
+
+print("Model input_shape:", model.input_shape)
+print("Auto IMG_SIZE:", IMG_SIZE)
+print("Has Rescaling inside model:", HAS_RESCALING)
 
 
-def load_keras_model(model_path: str) -> tf.keras.Model:
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(
-            f"Không tìm thấy model tại: {model_path}\n"
-            f"Gợi ý: kiểm tra lại file '{DEFAULT_MODEL_PATH}' hoặc chọn đúng đường dẫn ở sidebar."
-        )
-    return tf.keras.models.load_model(model_path)
+# PREPROCESS
+def preprocess(img: Image.Image):
+    img = img.convert("RGB").resize(IMG_SIZE)
 
+    arr = np.array(img).astype(np.float32)
 
-def preprocess_image(pil_img: Image.Image) -> np.ndarray:
-    """
-    - Convert RGB
-    - Resize 180x180
-    - To numpy + add batch dim
-    """
-    img = pil_img.convert("RGB").resize(IMG_SIZE)
-    arr = np.array(img, dtype=np.float32)
-    arr = np.expand_dims(arr, axis=0)  # (1, 180, 180, 3)
+    if not HAS_RESCALING:
+        arr = arr / 255.0
+
+    arr = np.expand_dims(arr, axis=0)  # (1,H,W,C)
     return arr
 
 
-def predict(model: tf.keras.Model, pil_img: Image.Image):
-    x = preprocess_image(pil_img)
-    probs = model.predict(x, verbose=0)[0]  # shape (2,)
-    idx = int(np.argmax(probs))
-    label = CLASS_NAMES[idx]
-    return label, probs
+# INFER
+def infer(img: Image.Image, show_debug: bool):
+    if img is None:
+        return {"NORMAL": 0.0, "PNEUMONIA": 0.0}, "No image."
+
+    x = preprocess(img)
+    pred = model.predict(x, verbose=0)
+
+    debug = []
+    debug.append(f"model.input_shape = {model.input_shape}")
+    debug.append(f"IMG_SIZE used = {IMG_SIZE}")
+    debug.append(f"HAS_RESCALING = {HAS_RESCALING}")
+    debug.append(f"x dtype = {x.dtype}, range = [{x.min():.4f}, {x.max():.4f}]")
+    debug.append(f"RAW pred = {pred}")
+
+    # sigmoid (1 output)
+    if pred.shape[-1] == 1:
+        p = float(pred[0][0])
+        p = max(0.0, min(1.0, p))
+
+        # Mặc định assume: p = PNEUMONIA
+        probs = {CLASS_NAMES[0]: 1 - p, CLASS_NAMES[1]: p}
+        return probs, ("\n".join(debug) if show_debug else "")
+
+    # softmax (2 outputs)
+    p = pred[0].astype(float).tolist()
+    if len(p) >= 2:
+        s = p[0] + p[1]
+        if s > 0:
+            p0, p1 = p[0] / s, p[1] / s
+        else:
+            p0, p1 = 0.5, 0.5
+
+        probs = {CLASS_NAMES[0]: float(p0), CLASS_NAMES[1]: float(p1)}
+        return probs, ("\n".join(debug) if show_debug else "")
+
+    # fallback
+    probs = {CLASS_NAMES[0]: 0.5, CLASS_NAMES[1]: 0.5}
+    return probs, ("\n".join(debug) if show_debug else "")
 
 
 # UI
-st.set_page_config(page_title="Pneumonia Detection - Chest X-ray", layout="centered")
-st.title("Pneumonia Detection (Chest X-ray)")
-st.write("Upload ảnh X-quang ngực để dự đoán: NORMAL hoặc PNEUMONIA.")
+CHATGPT_LIKE_CSS = """
+:root { color-scheme: light dark; }
 
-# Sidebar
-st.sidebar.header("Cấu hình")
-model_path = st.sidebar.text_input("Đường dẫn model (.keras)", value=DEFAULT_MODEL_PATH)
+.gradio-container { max-width: 1100px !important; }
+
+h1, h2, h3 { letter-spacing: -0.02em; }
+
+.card {
+  border-radius: 16px !important;
+  border: 1px solid rgba(128,128,128,0.25) !important;
+  padding: 14px !important;
+  background: rgba(127,127,127,0.06) !important;
+}
+
+.primary-btn button {
+  height: 44px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+}
+
+.muted { opacity: 0.85; font-size: 13px; }
+"""
 
 
-@st.cache_resource
-def get_model_cached(path: str):
-    return load_keras_model(path)
+def _on_predict(img, dbg):
+    probs, debug = infer(img, dbg)
+    if img is None:
+        status = "Bạn chưa upload ảnh."
+    else:
+        status = "Done. Xem Prediction ở panel bên phải."
+    return probs, debug, status
 
 
-try:
-    model = get_model_cached(model_path)
-    st.sidebar.success("Model loaded successfully.")
-except Exception as e:
-    st.sidebar.error("Cannot load model.")
-    st.error(str(e))
-    st.stop()
+def _on_clear():
+    return (
+        None,
+        {"NORMAL": 0.0, "PNEUMONIA": 0.0},
+        "",
+        "Đã reset. Upload ảnh mới để dự đoán.",
+    )
 
-uploaded = st.file_uploader(
-    "Chọn ảnh X-ray (jpg/png/jpeg)", type=["jpg", "jpeg", "png", "bmp", "webp"]
-)
 
-if uploaded is not None:
-    try:
-        image = Image.open(uploaded)
-        st.image(image, caption="Ảnh đầu vào", use_container_width=True)
+with gr.Blocks() as demo:
+    gr.Markdown("# Chest X-ray Classifier")
+    gr.Markdown(
+        f"Upload ảnh X-ray để dự đoán **{CLASS_NAMES[0]} / {CLASS_NAMES[1]}**.\n\n"
+        f"<span class='muted'>Model input: `{model.input_shape}` · Resize: `{IMG_SIZE[0]}x{IMG_SIZE[1]}` · Rescaling in model: `{HAS_RESCALING}`</span>"
+    )
 
-        with st.spinner("Đang dự đoán..."):
-            label, probs = predict(model, image)
+    with gr.Row():
+        with gr.Column(scale=7, elem_classes=["card"]):
+            gr.Markdown("### Input")
+            inp = gr.Image(type="pil", label="Kéo thả hoặc chọn ảnh X-ray (JPG/PNG)")
+            gr.Markdown(
+                "<span class='muted'>Tip: thử ảnh từ tập test trước, rồi thử ảnh ngoài dataset để xem model tổng quát hoá.</span>"
+            )
 
-        st.subheader("Kết quả dự đoán")
-        st.write(f"Dự đoán: {label}")
+            with gr.Row():
+                btn = gr.Button("Predict", elem_classes=["primary-btn"])
+                clear = gr.Button("Clear")
 
-        normal_p = float(probs[0]) * 100.0
-        pneumonia_p = float(probs[1]) * 100.0
+            show_debug = gr.Checkbox(
+                value=False, label="Show debug (raw output, preprocessing info)"
+            )
 
-        st.write("Xác suất dự đoán:")
-        st.progress(min(max(pneumonia_p / 100.0, 0.0), 1.0))
+        with gr.Column(scale=5, elem_classes=["card"]):
+            gr.Markdown("### Output")
+            out = gr.Label(num_top_classes=2, label="Prediction (Top-2)")
+            debug_box = gr.Textbox(label="Debug", lines=10)
+            status = gr.Textbox(
+                label="Status",
+                value="Sẵn sàng. Upload ảnh rồi bấm Predict.",
+                interactive=False,
+            )
 
-        col1, col2 = st.columns(2)
-        col1.metric("NORMAL (%)", f"{normal_p:.2f}")
-        col2.metric("PNEUMONIA (%)", f"{pneumonia_p:.2f}")
+    btn.click(
+        fn=_on_predict, inputs=[inp, show_debug], outputs=[out, debug_box, status]
+    )
+    clear.click(fn=_on_clear, inputs=[], outputs=[inp, out, debug_box, status])
 
-        st.caption(
-            "Lưu ý: Demo phục vụ mục đích học tập, không thay thế chẩn đoán y khoa."
-        )
-    except Exception as e:
-        st.error(f"Lỗi khi xử lý ảnh: {e}")
-else:
-    st.info("Hãy upload 1 ảnh X-quang để bắt đầu dự đoán.")
+
+if __name__ == "__main__":
+    demo.launch(theme=gr.themes.Soft(), css=CHATGPT_LIKE_CSS)
