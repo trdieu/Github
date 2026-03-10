@@ -1,0 +1,16 @@
+# Dataset (Kaggle) - KHÔNG push
+data/
+chest_xray/
+dataset/
+Datasets/
+**/train/
+**/test/
+**/val/
+*.zip
+*.rar
+*.7z
+
+# Python env/cache
+.venv/
+__pycache__/
+.ipynb_checkpoints/

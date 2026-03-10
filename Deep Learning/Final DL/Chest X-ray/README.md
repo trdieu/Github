@@ -12,7 +12,7 @@
 ---
 
 ## 1) Tổng quan dự án
-Trong dự án này, chúng em xây dựng mô hình học sâu nhằm hỗ trợ phát hiện **viêm phổi (Pneumonia)** từ ảnh **X-quang ngực**.  
+Trong dự án này, em xây dựng mô hình học sâu nhằm hỗ trợ phát hiện **viêm phổi (Pneumonia)** từ ảnh **X-quang ngực**.  
 Bài toán là phân loại ảnh đầu vào thành 1 trong 2 nhãn:
 - `NORMAL` : ảnh phổi bình thường
 - `PNEUMONIA` : ảnh phổi bị viêm phổi
@@ -129,12 +129,12 @@ App/app.py
 
 Chạy app:
 ```bash
-streamlit run App/app.py
+run App/app.py
 ```
 
 Sau khi chạy, mở trình duyệt:
 ```text
-http://localhost:8501
+http://127.0.0.1:7860
 ```
 
 Tại giao diện:
