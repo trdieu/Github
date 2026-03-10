@@ -1,4 +1,4 @@
-# 🇻🇳 Chatbot Luật Việt Nam sử dụng RAG (Retrieval-Augmented Generation)
+# Chatbot Luật Việt Nam sử dụng RAG (Retrieval-Augmented Generation)
 
 ## 1. Giới thiệu
 
@@ -74,6 +74,7 @@ Pipeline của hệ thống gồm các bước:
 ---
 
 # 5. Cấu trúc thư mục
+```bash
 laws/
 │
 ├── app/
@@ -99,7 +100,7 @@ laws/
 │
 ├── requirements.txt
 └── README.md
-
+```
 ---
 
 # 6. Cài đặt môi trường
@@ -146,8 +147,10 @@ Terminal sẽ hiển thị:
 Running on local URL: http://127.0.0.1:7860
 
 ### 8. Ví dụ câu hỏi
+```bash
 Công ty có được đơn phương chấm dứt hợp đồng lao động không?
 Người lao động có quyền nghỉ việc không cần lý do không?
+```
 
 ### 9. Công nghệ sử dụng
 
